@@ -25,6 +25,16 @@ describe('relations - integration', function () {
     this.app.models.widget.destroyAll(done);
   });
 
+  describe('/store/superStores', function() {
+    it('should invoke scoped methods remotely', function(done) {
+      this.get('/api/stores/superStores')
+        .expect(200, function(err, res) {
+          expect(res.body).to.be.array;
+          done();
+        });
+    });
+  });
+
   describe('/store/:id/widgets', function () {
     beforeEach(function() {
       this.url = '/api/stores/' + this.store.id + '/widgets';
@@ -100,6 +110,79 @@ describe('relations - integration', function () {
           assert.equal(count, 2);
           done();
         });
+      });
+    });
+  });
+  
+  describe('/stores/:id/widgets/:fk - 200', function () {
+    beforeEach(function (done) {
+      var self = this;
+      this.store.widgets.create({
+        name: this.widgetName
+      }, function(err, widget) {
+        self.widget = widget;
+        self.url = '/api/stores/' + self.store.id + '/widgets/' + widget.id;
+        done();
+      });
+    });
+    lt.describe.whenCalledRemotely('GET', '/stores/:id/widgets/:fk', function () {
+      it('should succeed with statusCode 200', function () {
+        assert.equal(this.res.statusCode, 200);
+        assert.equal(this.res.body.id, this.widget.id);
+      });
+    });
+  });
+
+  describe('/stores/:id/widgets/:fk - 404', function () {
+    beforeEach(function () {
+      this.url = '/api/stores/' + this.store.id + '/widgets/123456';
+    });
+    lt.describe.whenCalledRemotely('GET', '/stores/:id/widgets/:fk', function () {
+      it('should fail with statusCode 404', function () {
+        assert.equal(this.res.statusCode, 404);
+        assert.equal(this.res.body.error.status, 404);
+      });
+    });
+  });
+  
+  describe('/store/:id/widgets/count', function () {
+    beforeEach(function() {
+      this.url = '/api/stores/' + this.store.id + '/widgets/count';
+    });
+    lt.describe.whenCalledRemotely('GET', '/api/stores/:id/widgets/count', function() {
+      it('should succeed with statusCode 200', function() {
+        assert.equal(this.res.statusCode, 200);
+      });
+      it('should return the count', function() {
+        assert.equal(this.res.body.count, 1);
+      });
+    });
+  });
+  
+  describe('/store/:id/widgets/count - filtered (matches)', function () {
+    beforeEach(function() {
+      this.url = '/api/stores/' + this.store.id + '/widgets/count?where[name]=foo';
+    });
+    lt.describe.whenCalledRemotely('GET', '/api/stores/:id/widgets/count?where[name]=foo', function() {
+      it('should succeed with statusCode 200', function() {
+        assert.equal(this.res.statusCode, 200);
+      });
+      it('should return the count', function() {
+        assert.equal(this.res.body.count, 1);
+      });
+    });
+  });
+  
+  describe('/store/:id/widgets/count - filtered (no matches)', function () {
+    beforeEach(function() {
+      this.url = '/api/stores/' + this.store.id + '/widgets/count?where[name]=bar';
+    });
+    lt.describe.whenCalledRemotely('GET', '/api/stores/:id/widgets/count?where[name]=bar', function() {
+      it('should succeed with statusCode 200', function() {
+        assert.equal(this.res.statusCode, 200);
+      });
+      it('should return the count', function() {
+        assert.equal(this.res.body.count, 0);
       });
     });
   });
@@ -198,6 +281,51 @@ describe('relations - integration', function () {
           app.models.appointment.find(function (err, apps) {
             assert.equal(apps.length, 1);
             assert.equal(apps[0].patientId, self.patient.id);
+            done();
+          });
+        });
+
+        it('should connect physician to patient', function (done) {
+          var self = this;
+          self.physician.patients(function (err, patients) {
+            assert.equal(patients.length, 1);
+            assert.equal(patients[0].id, self.patient.id);
+            done();
+          });
+        });
+      });
+    });
+
+    describe('PUT /physicians/:id/patients/rel/:fk with data', function () {
+
+      before(function (done) {
+        var self = this;
+        setup(false, function (err, root) {
+          self.url = root.relUrl;
+          self.patient = root.patient;
+          self.physician = root.physician;
+          done();
+        });
+      });
+
+      var NOW = Date.now();
+      var data = { date: new Date(NOW) };
+
+      lt.describe.whenCalledRemotely('PUT', '/api/physicians/:id/patients/rel/:fk', data, function () {
+        it('should succeed with statusCode 200', function () {
+          assert.equal(this.res.statusCode, 200);
+          assert.equal(this.res.body.patientId, this.patient.id);
+          assert.equal(this.res.body.physicianId, this.physician.id);
+          assert.equal(new Date(this.res.body.date).getTime(), NOW);
+        });
+
+        it('should create a record in appointment', function (done) {
+          var self = this;
+          app.models.appointment.find(function (err, apps) {
+            assert.equal(apps.length, 1);
+            assert.equal(apps[0].patientId, self.patient.id);
+            assert.equal(apps[0].physicianId, self.physician.id);
+            assert.equal(apps[0].date.getTime(), NOW);
             done();
           });
         });
@@ -482,6 +610,65 @@ describe('relations - integration', function () {
         });
     });
   });
+
+  describe('embedsOne', function() {
+  
+    before(function defineGroupAndPosterModels() {
+      var group = app.model(
+        'group',
+        { properties: { name: 'string' }, 
+          dataSource: 'db',
+          plural: 'groups' 
+        }
+      );
+      var poster = app.model(
+        'poster',
+        { properties: { url: 'string' }, dataSource: 'db' }
+      );
+      group.embedsOne(poster, { as: 'cover' });
+    });
+  
+    before(function createImage(done) {
+      var test = this;
+      app.models.group.create({ name: 'Group 1' },
+        function(err, group) {
+          if (err) return done(err);
+          test.group = group;
+          group.cover.build({ url: 'http://image.url' });
+          group.save(done);
+        });
+    });
+  
+    after(function(done) {
+      this.app.models.group.destroyAll(done);
+    });
+  
+    it('includes the embedded models', function(done) {
+      var url = '/api/groups/' + this.group.id;
+  
+      this.get(url)
+        .expect(200, function(err, res) {
+          expect(res.body.name).to.be.equal('Group 1');
+          expect(res.body.poster).to.be.eql( 
+            { url: 'http://image.url' }
+          );
+          done();
+        });
+    });
+  
+    it('returns the embedded model', function(done) {
+      var url = '/api/groups/' + this.group.id + '/cover';
+      
+      this.get(url)
+        .expect(200, function(err, res) {
+          expect(res.body).to.be.eql( 
+            { url: 'http://image.url' }
+          );
+          done();
+        });
+    });
+  
+  });
   
   describe('embedsMany', function() {
     
@@ -618,7 +805,14 @@ describe('relations - integration', function () {
         });
     });
     
-    // TODO - this.head is undefined
+    it('returns a 404 response when embedded model is not found', function(done) {
+      var url = '/api/todo-lists/' + this.todoList.id + '/items/2';
+      this.get(url).expect(404, function(err, res) {
+        expect(res.body.error.status).to.be.equal(404);
+        expect(res.body.error.message).to.be.equal('Unknown "todoItem" id "2".');
+        done();
+      });
+    });
     
     it.skip('checks if an embedded model exists - ok', function(done) {
       var url = '/api/todo-lists/' + this.todoList.id + '/items/3';
@@ -651,7 +845,15 @@ describe('relations - integration', function () {
         'ingredient',
         { properties: { name: 'string' }, dataSource: 'db' }
       );
+      var photo = app.model(
+        'photo',
+        { properties: { name: 'string' }, dataSource: 'db' }
+      );
       recipe.referencesMany(ingredient);
+      // contrived example for test:
+      recipe.hasOne(photo, { as: 'picture', options: { 
+        http: { path: 'image' } 
+      } });
     });
 
     before(function createRecipe(done) {
@@ -664,7 +866,7 @@ describe('relations - integration', function () {
             name: 'Chocolate' }, 
           function(err, ing) {
             test.ingredient1 = ing.id;
-            done();
+            recipe.picture.create({ name: 'Photo 1' }, done);
           });
         });
     });
@@ -680,7 +882,9 @@ describe('relations - integration', function () {
     after(function(done) {
       var app = this.app;
       app.models.recipe.destroyAll(function() {
-        app.models.ingredient.destroyAll(done);
+        app.models.ingredient.destroyAll(function() {
+          app.models.photo.destroyAll(done);
+        });
       });
     });
     
@@ -902,27 +1106,190 @@ describe('relations - integration', function () {
         });
     });
     
-    // TODO - this.head is undefined
+    it('uses a custom relation path', function(done) {
+      var url = '/api/recipes/' + this.recipe.id + '/image';
+      
+      this.get(url)
+        .expect(200, function(err, res) {
+          expect(err).to.not.exist;
+          expect(res.body.name).to.equal('Photo 1');
+          done();
+        });
+    });
     
-    // it.skip('checks if a referenced model exists - ok', function(done) {
-    //   var url = '/api/recipes/' + this.recipe.id + '/ingredients/';
-    //   url += this.ingredient1;
-    //   
-    //   this.head(url)
-    //     .expect(200, function(err, res) {
-    //       done();
-    //     });
-    // });
+    it.skip('checks if a referenced model exists - ok', function(done) {
+      var url = '/api/recipes/' + this.recipe.id + '/ingredients/';
+      url += this.ingredient1;
+      
+      this.head(url)
+        .expect(200, function(err, res) {
+          done();
+        });
+    });
     
-    // it.skip('checks if an referenced model exists - fail', function(done) {
-    //   var url = '/api/recipes/' + this.recipe.id + '/ingredients/';
-    //   url += this.ingredient3;
-    //   
-    //   this.head(url)
-    //     .expect(404, function(err, res) {
-    //       done();
-    //     });
-    // });
+    it.skip('checks if an referenced model exists - fail', function(done) {
+      var url = '/api/recipes/' + this.recipe.id + '/ingredients/';
+      url += this.ingredient3;
+      
+      this.head(url)
+        .expect(404, function(err, res) {
+          done();
+        });
+    });
+    
+  });
+  
+  describe('nested relations', function() {
+    
+    before(function defineModels() {
+      var Book = app.model(
+        'Book',
+        { properties: { name: 'string' }, dataSource: 'db',
+        plural: 'books' }
+      );
+      var Page = app.model(
+        'Page',
+        { properties: { name: 'string' }, dataSource: 'db',
+        plural: 'pages' }
+      );
+      var Image = app.model(
+        'Image',
+        { properties: { name: 'string' }, dataSource: 'db',
+        plural: 'images' }
+      );
+      var Note = app.model(
+        'Note',
+        { properties: { text: 'string' }, dataSource: 'db',
+        plural: 'notes' }
+      );
+      Book.hasMany(Page);
+      Page.hasMany(Note);
+      Image.belongsTo(Book);
+      
+      Book.nestRemoting('pages');
+      Image.nestRemoting('book');
+      
+      expect(Book.prototype['__findById__pages__notes']).to.be.a.function;
+      expect(Image.prototype['__findById__book__pages']).to.be.a.function;
+      
+      Page.beforeRemote('prototype.__findById__notes', function(ctx, result, next) {
+        ctx.res.set('x-before', 'before');
+        next();
+      });
+      
+      Page.afterRemote('prototype.__findById__notes', function(ctx, result, next) {
+        ctx.res.set('x-after', 'after');
+        next();
+      });
+      
+    });
+    
+    before(function createBook(done) {
+      var test = this;
+      app.models.Book.create({ name: 'Book 1' }, 
+        function(err, book) {
+          if (err) return done(err);
+          test.book = book;
+          book.pages.create({ name: 'Page 1' }, 
+            function(err, page) {
+              if (err) return done(err);
+              test.page = page;
+              page.notes.create({ text: 'Page Note 1' }, 
+                function(err, note) {
+                test.note = note;
+                done();
+              });
+          });
+        });
+    });
+    
+    before(function createCover(done) {
+      var test = this;
+      app.models.Image.create({ name: 'Cover 1', book: test.book }, 
+        function(err, image) {
+          if (err) return done(err);
+          test.image = image;
+          done();
+        });
+    });
+    
+    it('has regular relationship routes - pages', function(done) {
+      var test = this;
+      this.get('/api/books/' + test.book.id + '/pages')
+        .expect(200, function(err, res) {
+          expect(res.body).to.be.an.array;
+          expect(res.body).to.have.length(1);
+          expect(res.body[0].name).to.equal('Page 1');
+          done();
+      });
+    });
+    
+    it('has regular relationship routes - notes', function(done) {
+      var test = this;
+      this.get('/api/pages/' + test.page.id + '/notes/' + test.note.id)
+        .expect(200, function(err, res) {
+          expect(res.headers['x-before']).to.equal('before');
+          expect(res.headers['x-after']).to.equal('after');
+          expect(res.body).to.be.an.object;
+          expect(res.body.text).to.equal('Page Note 1');
+          done();
+      });
+    });
+    
+    it('has a basic error handler', function(done) {
+      var test = this;
+      this.get('/api/books/unknown/pages/' + test.page.id + '/notes')
+        .expect(404, function(err, res) {
+          expect(res.body.error).to.be.an.object;
+          var expected = 'could not find a model with id unknown';
+          expect(res.body.error.message).to.equal(expected);
+          done();
+      });
+    });
+    
+    it('enables nested relationship routes - belongsTo find', function(done) {
+      var test = this;
+      this.get('/api/images/' + test.image.id + '/book/pages')
+        .end(function(err, res) {
+          expect(res.body).to.be.an.array;
+          expect(res.body).to.have.length(1);
+          expect(res.body[0].name).to.equal('Page 1');
+          done();
+      });
+    });
+    
+    it('enables nested relationship routes - belongsTo findById', function(done) {
+      var test = this;
+      this.get('/api/images/' + test.image.id + '/book/pages/' + test.page.id)
+        .end(function(err, res) {
+          expect(res.body).to.be.an.object;
+          expect(res.body.name).to.equal('Page 1');
+          done();
+      });
+    });
+    
+    it('enables nested relationship routes - hasMany find', function(done) {
+      var test = this;
+      this.get('/api/books/' + test.book.id + '/pages/' + test.page.id + '/notes')
+        .expect(200, function(err, res) {
+          expect(res.body).to.be.an.array;
+          expect(res.body).to.have.length(1);
+          expect(res.body[0].text).to.equal('Page Note 1');
+          done();
+      });
+    });
+    
+    it('enables nested relationship routes - hasMany findById', function(done) {
+      var test = this;
+      this.get('/api/books/' + test.book.id + '/pages/' + test.page.id + '/notes/' + test.note.id)
+        .expect(200, function(err, res) {
+          expect(res.headers['x-before']).to.equal('before');
+          expect(res.headers['x-after']).to.equal('after');
+          expect(res.body).to.be.an.object;
+          expect(res.body.text).to.equal('Page Note 1');
+        done();
+      });
+    });
     
   });
   
