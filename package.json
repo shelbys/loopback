@@ -43,7 +43,7 @@
     "loopback-connector-remote": "^1.0.1",
     "nodemailer": "~1.3.0",
     "nodemailer-stub-transport": "~0.1.4",
-    "strong-remoting": "git+https://github.com/shelbys/strong-remoting.git",
+    "strong-remoting": "git+https://github.com/shelbys/strong-remoting#validate_param_enum",
     "uid2": "0.0.3",
     "underscore": "~1.7.0",
     "underscore.string": "~2.3.3"
