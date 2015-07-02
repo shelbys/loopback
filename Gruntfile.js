@@ -1,6 +1,9 @@
 /*global module:false*/
 module.exports = function(grunt) {
 
+  // Do not report warnings from unit-tests exercising deprecated paths
+  process.env.NO_DEPRECATION = 'loopback';
+
   grunt.loadNpmTasks('grunt-mocha-test');
 
   // Project configuration.
@@ -30,18 +33,42 @@ module.exports = function(grunt) {
       gruntfile: {
         src: 'Gruntfile.js'
       },
-      lib_test: {
-        src: ['lib/**/*.js', 'test/**/*.js']
+      lib: {
+        src: ['lib/**/*.js']
+      },
+      common: {
+        src: ['common/**/*.js']
+      },
+      browser: {
+        src: ['browser/**/*.js']
+      },
+      server: {
+        src: ['server/**/*.js']
+      },
+      test: {
+        src: ['test/**/*.js']
       }
+    },
+    jscs: {
+      gruntfile: 'Gruntfile.js',
+      lib: ['lib/**/*.js'],
+      common: ['common/**/*.js'],
+      server: ['server/**/*.js'],
+      browser: ['browser/**/*.js'],
+      test: ['test/**/*.js']
     },
     watch: {
       gruntfile: {
         files: '<%= jshint.gruntfile.src %>',
         tasks: ['jshint:gruntfile']
       },
-      lib_test: {
-        files: '<%= jshint.lib_test.src %>',
-        tasks: ['jshint:lib_test']
+      lib: {
+        files: ['<%= jshint.lib.src %>'],
+        tasks: ['jshint:lib']
+      },
+      test: {
+        files: ['<%= jshint.test.src %>'],
+        tasks: ['jshint:test']
       }
     },
     browserify: {
@@ -50,7 +77,7 @@ module.exports = function(grunt) {
           'dist/loopback.js': ['index.js'],
         },
         options: {
-          ignore: ['nodemailer', 'passport'],
+          ignore: ['nodemailer', 'passport', 'bcrypt'],
           standalone: 'loopback'
         }
       }
@@ -73,7 +100,7 @@ module.exports = function(grunt) {
     karma: {
       'unit-once': {
         configFile: 'test/karma.conf.js',
-        browsers: [ 'PhantomJS' ],
+        browsers: ['PhantomJS'],
         singleRun: true,
         reporters: ['dots', 'junit'],
 
@@ -84,6 +111,14 @@ module.exports = function(grunt) {
         junitReporter: {
           outputFile: 'karma-xunit.xml'
         },
+
+        browserify: {
+          // Disable sourcemaps to prevent
+          // Fatal error: Maximum call stack size exceeded
+          debug: false,
+          // Disable watcher, grunt will exit after the first run
+          watch: false
+        }
       },
       unit: {
         configFile: 'test/karma.conf.js',
@@ -104,7 +139,7 @@ module.exports = function(grunt) {
 
           // list of files to exclude
           exclude: [
-            
+
           ],
 
           // test results reporter to use
@@ -154,7 +189,8 @@ module.exports = function(grunt) {
               'passport',
               'passport-local',
               'superagent',
-              'supertest'
+              'supertest',
+              'bcrypt'
             ],
             // transform: ['coffeeify'],
             // debug: true,
@@ -175,6 +211,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-jscs');
   grunt.loadNpmTasks('grunt-karma');
 
   grunt.registerTask('e2e-server', function() {
@@ -189,6 +226,8 @@ module.exports = function(grunt) {
   grunt.registerTask('default', ['browserify']);
 
   grunt.registerTask('test', [
+    'jscs',
+    'jshint',
     process.env.JENKINS_HOME ? 'mochaTest:unit-xml' : 'mochaTest:unit',
    'karma:unit-once']);
 
