@@ -12,7 +12,7 @@ describe('RemoteConnector', function() {
       remoteApp.use(loopback.rest());
       remoteApp.listen(0, function() {
         test.dataSource = loopback.createDataSource({
-          host: remoteApp.get('host'),
+          host: 'localhost',
           port: remoteApp.get('port'),
           connector: loopback.Remote
         });
@@ -20,7 +20,8 @@ describe('RemoteConnector', function() {
       });
     },
     onDefine: function(Model) {
-      var RemoteModel = Model.extend(Model.modelName);
+      var RemoteModel = Model.extend('Remote' + Model.modelName, {},
+        { plural: Model.pluralModelName });
       RemoteModel.attachTo(loopback.createDataSource({
         connector: loopback.Memory
       }));
@@ -38,7 +39,7 @@ describe('RemoteConnector', function() {
 
     remoteApp.listen(0, function() {
       test.remote = loopback.createDataSource({
-        host: remoteApp.get('host'),
+        host: 'localhost',
         port: remoteApp.get('port'),
         connector: loopback.Remote
       });
@@ -46,7 +47,7 @@ describe('RemoteConnector', function() {
     });
   });
 
-  it('should support the save method', function (done) {
+  it('should support the save method', function(done) {
     var calledServerCreate = false;
     var RemoteModel = loopback.PersistedModel.extend('TestModel');
     RemoteModel.attachTo(this.remote);
@@ -57,12 +58,13 @@ describe('RemoteConnector', function() {
       calledServerCreate = true;
       data.id = 1;
       cb(null, data);
-    }
+    };
 
     ServerModel.setupRemoting();
 
     var m = new RemoteModel({foo: 'bar'});
     m.save(function(err, inst) {
+      if (err) return done(err);
       assert(inst instanceof RemoteModel);
       assert(calledServerCreate);
       done();

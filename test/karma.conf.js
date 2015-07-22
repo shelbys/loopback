@@ -16,8 +16,13 @@ module.exports = function(config) {
     files: [
       'node_modules/es5-shim/es5-shim.js',
       'test/support.js',
+      'test/loopback.test.js',
       'test/model.test.js',
+      'test/model.application.test.js',
       'test/geo-point.test.js',
+      'test/replication.test.js',
+      'test/change.test.js',
+      'test/checkpoint.test.js',
       'test/app.test.js'
     ],
 
@@ -58,6 +63,11 @@ module.exports = function(config) {
 
     // If browser does not capture in given timeout [ms], kill it
     captureTimeout: 60000,
+
+    // to avoid DISCONNECTED messages
+    browserDisconnectTimeout : 10000, // default 2000
+    browserDisconnectTolerance : 1, // default 0
+    browserNoActivityTimeout : 60000, //default 10000
 
     // Continuous Integration mode
     // if true, it capture browsers, run tests and exit
