@@ -3,6 +3,7 @@
  */
 
 var loopback = require('../../lib/loopback');
+var utils = require('../../lib/utils');
 var path = require('path');
 var SALT_WORK_FACTOR = 10;
 var crypto = require('crypto');
@@ -38,7 +39,7 @@ var debug = require('debug')('loopback:user');
  * - ALLOW OWNER `deleteById`
  * - ALLOW EVERYONE `login`
  * - ALLOW EVERYONE `logout`
- * - ALLOW EVERYONE `findById`
+ * - ALLOW OWNER `findById`
  * - ALLOW OWNER `updateAttributes`
  *
  * @property {String} username Must be unique
@@ -80,6 +81,9 @@ module.exports = function(User) {
       cb = options;
       options = undefined;
     }
+
+    cb = cb || utils.createPromiseCallback();
+
     if (typeof ttl === 'object' && !options) {
       // createAccessToken(options, cb)
       options = ttl;
@@ -91,6 +95,7 @@ module.exports = function(User) {
     this.accessTokens.create({
       ttl: ttl
     }, cb);
+    return cb.promise;
   };
 
   function splitPrincipal(name, realmDelimiter) {
@@ -168,6 +173,8 @@ module.exports = function(User) {
       include = undefined;
     }
 
+    fn = fn || utils.createPromiseCallback();
+
     include = (include || '');
     if (Array.isArray(include)) {
       include = include.map(function(val) {
@@ -191,13 +198,15 @@ module.exports = function(User) {
       var err1 = new Error('realm is required');
       err1.statusCode = 400;
       err1.code = 'REALM_REQUIRED';
-      return fn(err1);
+      fn(err1);
+      return fn.promise;
     }
     if (!query.email && !query.username) {
       var err2 = new Error('username or email is required');
       err2.statusCode = 400;
       err2.code = 'USERNAME_EMAIL_REQUIRED';
-      return fn(err2);
+      fn(err2);
+      return fn.promise;
     }
 
     self.findOne({where: query}, function(err, user) {
@@ -234,7 +243,7 @@ module.exports = function(User) {
               err = new Error('login failed as the email has not been verified');
               err.statusCode = 401;
               err.code = 'LOGIN_FAILED_EMAIL_NOT_VERIFIED';
-              return fn(err);
+              fn(err);
             } else {
               if (user.createAccessToken.length === 2) {
                 user.createAccessToken(credentials.ttl, tokenHandler);
@@ -252,6 +261,7 @@ module.exports = function(User) {
         fn(defaultError);
       }
     });
+    return fn.promise;
   };
 
   /**
@@ -269,6 +279,7 @@ module.exports = function(User) {
    */
 
   User.logout = function(tokenId, fn) {
+    fn = fn || utils.createPromiseCallback();
     this.relations.accessTokens.modelTo.findById(tokenId, function(err, accessToken) {
       if (err) {
         fn(err);
@@ -278,6 +289,7 @@ module.exports = function(User) {
         fn(new Error('could not find accessToken'));
       }
     });
+    return fn.promise;
   };
 
   /**
@@ -288,6 +300,7 @@ module.exports = function(User) {
    */
 
   User.prototype.hasPassword = function(plain, fn) {
+    fn = fn || utils.createPromiseCallback();
     if (this.password && plain) {
       bcrypt.compare(plain, this.password, function(err, isMatch) {
         if (err) return fn(err);
@@ -296,6 +309,7 @@ module.exports = function(User) {
     } else {
       fn(null, false);
     }
+    return fn.promise;
   };
 
   /**
@@ -332,6 +346,8 @@ module.exports = function(User) {
    */
 
   User.prototype.verify = function(options, fn) {
+    fn = fn || utils.createPromiseCallback();
+
     var user = this;
     var userModel = this.constructor;
     var registry = userModel.registry;
@@ -339,7 +355,7 @@ module.exports = function(User) {
     assert(options.type, 'You must supply a verification type (options.type)');
     assert(options.type === 'email', 'Unsupported verification type');
     assert(options.to || this.email, 'Must include options.to when calling user.verify() or the user must have an email property');
-    assert(options.from, 'Must include options.from when calling user.verify() or the user must have an email property');
+    assert(options.from, 'Must include options.from when calling user.verify()');
 
     options.redirect = options.redirect || '/';
     options.template = path.resolve(options.template || path.join(__dirname, '..', '..', 'templates', 'verify.ejs'));
@@ -350,12 +366,17 @@ module.exports = function(User) {
     options.host = options.host || (app && app.get('host')) || 'localhost';
     options.port = options.port || (app && app.get('port')) || 3000;
     options.restApiRoot = options.restApiRoot || (app && app.get('restApiRoot')) || '/api';
+
+    var displayPort = (
+      (options.protocol === 'http' && options.port == '80') ||
+      (options.protocol === 'https' && options.port == '443')
+    ) ? '' : ':' + options.port;
+
     options.verifyHref = options.verifyHref ||
       options.protocol +
       '://' +
       options.host +
-      ':' +
-      options.port +
+      displayPort +
       options.restApiRoot +
       userModel.http.path +
       userModel.sharedClass.find('confirm', true).http.path +
@@ -408,6 +429,7 @@ module.exports = function(User) {
         }
       });
     }
+    return fn.promise;
   };
 
   /**
@@ -436,6 +458,7 @@ module.exports = function(User) {
    * @param {Error} err
    */
   User.confirm = function(uid, token, redirect, fn) {
+    fn = fn || utils.createPromiseCallback();
     this.findById(uid, function(err, user) {
       if (err) {
         fn(err);
@@ -464,6 +487,7 @@ module.exports = function(User) {
         }
       }
     });
+    return fn.promise;
   };
 
   /**
@@ -477,39 +501,45 @@ module.exports = function(User) {
    */
 
   User.resetPassword = function(options, cb) {
+    cb = cb || utils.createPromiseCallback();
     var UserModel = this;
     var ttl = UserModel.settings.resetPasswordTokenTTL || DEFAULT_RESET_PW_TTL;
 
     options = options || {};
-    if (typeof options.email === 'string') {
-      UserModel.findOne({ where: {email: options.email} }, function(err, user) {
-        if (err) {
-          cb(err);
-        } else if (user) {
-          // create a short lived access token for temp login to change password
-          // TODO(ritch) - eventually this should only allow password change
-          user.accessTokens.create({ttl: ttl}, function(err, accessToken) {
-            if (err) {
-              cb(err);
-            } else {
-              cb();
-              UserModel.emit('resetPasswordRequest', {
-                email: options.email,
-                accessToken: accessToken,
-                user: user
-              });
-            }
-          });
-        } else {
-          cb();
-        }
-      });
-    } else {
-      var err = new Error('email is required');
+    if (typeof options.email !== 'string') {
+      var err = new Error('Email is required');
       err.statusCode = 400;
       err.code = 'EMAIL_REQUIRED';
       cb(err);
+      return cb.promise;
     }
+
+    UserModel.findOne({ where: {email: options.email} }, function(err, user) {
+      if (err) {
+        return cb(err);
+      }
+      if (!user) {
+        err = new Error('Email not found');
+        err.statusCode = 404;
+        err.code = 'EMAIL_NOT_FOUND';
+        return cb(err);
+      }
+      // create a short lived access token for temp login to change password
+      // TODO(ritch) - eventually this should only allow password change
+      user.accessTokens.create({ttl: ttl}, function(err, accessToken) {
+        if (err) {
+          return cb(err);
+        }
+        cb();
+        UserModel.emit('resetPasswordRequest', {
+          email: options.email,
+          accessToken: accessToken,
+          user: user
+        });
+      });
+    });
+
+    return cb.promise;
   };
 
   /*!
@@ -544,6 +574,9 @@ module.exports = function(User) {
     this.settings.ttl = this.settings.ttl || DEFAULT_TTL;
 
     UserModel.setter.password = function(plain) {
+      if (typeof plain !== 'string') {
+        return;
+      }
       if (plain.indexOf('$2a$') === 0 && plain.length === 60) {
         // The password is already hashed. It can be the case
         // when the instance is loaded from DB
@@ -587,7 +620,7 @@ module.exports = function(User) {
     UserModel.remoteMethod(
       'logout',
       {
-        description: 'Logout a user with access token',
+        description: 'Logout a user with access token.',
         accepts: [
           {arg: 'access_token', type: 'string', required: true, http: function(ctx) {
             var req = ctx && ctx.req;
@@ -606,7 +639,7 @@ module.exports = function(User) {
     UserModel.remoteMethod(
       'confirm',
       {
-        description: 'Confirm a user registration with email verification token',
+        description: 'Confirm a user registration with email verification token.',
         accepts: [
           {arg: 'uid', type: 'string', required: true},
           {arg: 'token', type: 'string', required: true},
@@ -619,7 +652,7 @@ module.exports = function(User) {
     UserModel.remoteMethod(
       'resetPassword',
       {
-        description: 'Reset password for a user with email',
+        description: 'Reset password for a user with email.',
         accepts: [
           {arg: 'options', type: 'object', required: true, http: {source: 'body'}}
         ],

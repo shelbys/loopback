@@ -1,3 +1,145 @@
+2015-11-13, Version 2.25.0
+==========================
+
+ * Fix typo in description of persistedModel.updateAttributes() (Richard Pringle)
+
+
+2015-11-09, Version 2.24.0
+==========================
+
+ * Fix cookie-parser error (Simon Ho)
+
+
+2015-11-09, Version 2.23.0
+==========================
+
+ * lib/registry: fix findModel for model ctor (Miroslav Bajtoš)
+
+ * Refer to licenses with a link (Sam Roberts)
+
+ * Fix user.resetPassword to fail on email not found (Simo Moujami)
+
+ * Fix typo in doc comment (Rand McKinney)
+
+ * Do not include redundant ports in verify links (Samuel Gaus)
+
+ * Set application's id property only if it's empty. (wusuopu)
+
+ * Check configs for shared method settings (Simon Ho)
+
+ * Add test fixtures for shared methods (Simon Ho)
+
+ * Clean up .jshintrc (Simon Ho)
+
+ * Update comment about user ACL to reflect implementation (Felipe Oliveira Carvalho)
+
+
+2015-09-23, Version 2.22.2
+==========================
+
+ * Use strongloop conventions for licensing (Sam Roberts)
+
+ * Set package license to MIT (Sam Roberts)
+
+
+2015-09-18, Version 2.22.1
+==========================
+
+ * Fix perf of rectification after updateAttributes (Miroslav Bajtoš)
+
+ * Update persisted-model.js (Rand McKinney)
+
+ * Stop NPM license warning (Simon Ho)
+
+
+2015-09-03, Version 2.22.0
+==========================
+
+ * Create stack-removing errorhandler middleware (Richard Walker)
+
+ * Update README.md (Rand McKinney)
+
+ * Allow EJS templates to use includes (Samuel Gaus)
+
+ * Fix options.to assertion message in user.verify (Farid Nouri Neshat)
+
+ * Upgrade Travis to container-based infrastructure (Miroslav Bajtoš)
+
+ * fix typo "PeristedModel" (Christoph)
+
+
+2015-08-13, Version 2.21.0
+==========================
+
+ * Add util methods to ACL and clean up related model resolutions (Raymond Feng)
+
+ * Promisify 'PersistedModel - replication' (Pradnya Baviskar)
+
+ * Promisify 'Application' model (Pradnya Baviskar)
+
+
+2015-08-06, Version 2.20.0
+==========================
+
+ * Allow methods filter for middleware config (Raymond Feng)
+
+ * Don't load Bluebird for createPromiseCallback (Miroslav Bajtoš)
+
+ * fix exit early when password is non-string closes #1437 (Berkeley Martinez)
+
+ * Promisify User model (Pradnya Baviskar)
+
+ * Add missing . to user model property descriptions (Richard Walker)
+
+
+2015-07-28, Version 2.19.1
+==========================
+
+ * Disable application model test for karma (Raymond Feng)
+
+ * Fix jsdocs for methods with where argument (Raymond Feng)
+
+ * Add link to createChangeStream docs (Ritchie Martori)
+
+
+2015-07-09, Version 2.19.0
+==========================
+
+ * Add PersistedModel.createChangeStream() (Ritchie Martori)
+
+ * Remove trailing whitespace from jsdoc (Ritchie Martori)
+
+ * Update model.js (Rand McKinney)
+
+ * Downgrade version of loopback-testing (Ritchie Martori)
+
+ * Auto-configure models required by `app.enableAuth` (Miroslav Bajtoš)
+
+ * Add loadBuiltinModels flag to loopback(options) (Miroslav Bajtoš)
+
+ * Add a unit-test for searchDefaultTokenKeys (Miroslav Bajtoš)
+
+ * access-token: add option "searchDefaultTokenKeys" (Owen Brotherwood)
+
+ * Fix the test case (Raymond Feng)
+
+ * Fix code standards issues (Tom Kirkpatrick)
+
+ * Add test case to highlight fatal error when trying to include a scoped relationship through a polymorphic relationship (Tom Kirkpatrick)
+
+ * add callback args for listByPrincipalType to jsdoc comment, pass explicit arguments to callback (Esco Obong)
+
+ * mark utiltiy function as private (Esco Obong)
+
+ * fix linting errors (Esco Obong)
+
+ * fix lint erros (Esco Obong)
+
+ * consolidate Role methods roles, applications, and users into one, add query param to allow for pagination and restricting fields (Esco Obong)
+
+ * fix implementation of Role methods: users,roles, and applications (Esco Obong)
+
+
 2015-05-13, Version 2.18.0
 ==========================
 
