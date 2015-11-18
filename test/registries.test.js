@@ -1,3 +1,5 @@
+var Registry = require('../lib/registry');
+
 describe('Registry', function() {
   describe('one per app', function() {
     it('should allow two apps to reuse the same model name', function(done) {
@@ -42,6 +44,17 @@ describe('Registry', function() {
             });
           });
         });
+      });
+    });
+  });
+
+  describe('#findModel', function() {
+    describe('given a function as modelName', function() {
+      it('should return modelName as model', function(done) {
+        var modelName = function() {};
+        var model = new Registry().findModel(modelName);
+        expect(model).to.equal(modelName);
+        done();
       });
     });
   });
