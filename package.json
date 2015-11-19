@@ -50,7 +50,7 @@
     "nodemailer-stub-transport": "^0.1.5",
     "serve-favicon": "^2.2.0",
     "stable": "^0.1.5",
-    "strong-remoting": "git+https://github.com/shelbys/strong-remoting#Registry-findModel-modelName",
+    "strong-remoting": "git+https://github.com/shelbys/strong-remoting",
     "uid2": "0.0.3",
     "underscore.string": "^3.0.3"
   },
