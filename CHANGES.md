@@ -1,3 +1,29 @@
+2015-12-22, Version 2.26.2
+==========================
+
+ * Fix bulkUpdate to not trigger rectifyAll (Amir Jafarian)
+
+
+2015-12-17, Version 2.26.1
+==========================
+
+ * PersistedModel: log rectify/rectifyAll triggers (Miroslav Bajtoš)
+
+
+2015-12-09, Version 2.26.0
+==========================
+
+ * change: skip cp lookup on no change (Miroslav Bajtoš)
+
+ * Change: correctly rectify no-change (Miroslav Bajtoš)
+
+ * Update model.js (Rand McKinney)
+
+ * Adding properties description for User Model (David Cheung)
+
+ * Add case-sensitve email option for User model. (Richard Pringle)
+
+
 2015-11-13, Version 2.25.0
 ==========================
 
